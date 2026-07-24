@@ -28,7 +28,7 @@ ARTICLES_FILE = BASE_DIR / "data" / "processed" / "category_articles.json" # "ca
 tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
 model = torch.load(
     "quantized_model.pt",
-    map_location="cpu",
+    #map_location="cpu",
     weights_only=False,   # this is a full quantized nn.Module, not just a state_dict
 ) # AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
 model.eval()
