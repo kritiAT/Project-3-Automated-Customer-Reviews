@@ -6,6 +6,7 @@ venv/
 
 # ML models
 models/distilbert-base-uncased
+models/distilbert-base-uncased-quantized
 
 # Data
 data/raw
