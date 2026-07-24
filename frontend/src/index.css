@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  background-color: #EFEAD9;
+}
+
+body {
+  @apply font-body text-ink antialiased;
+  background-color: #EFEAD9;
+  background-image:
+    linear-gradient(rgba(34,40,31,0.05) 1px, transparent 1px);
+  background-size: 100% 2.1rem;
+  background-position: 0 6.5rem;
+}
+
+::selection {
+  background-color: #8C6F2F;
+  color: #EFEAD9;
+}
+
+/* Keyboard focus visibility, kept even where Tailwind utilities are used */
+:focus-visible {
+  outline: 2px solid #22281F;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.rule {
+  border-color: #C9C2A6;
+}
+
+.stamp {
+  transform: rotate(-2deg);
+}
