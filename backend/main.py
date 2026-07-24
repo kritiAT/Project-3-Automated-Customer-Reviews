@@ -4,6 +4,8 @@ import torch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from huggingface_hub import hf_hub_download
+
 
 app = FastAPI(
     title="Automated Customer Reviews API",
@@ -21,14 +23,15 @@ app.add_middleware(
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 MODEL_DIR = "KritiAmin/Automated-Reviews"
+MODEL_PATH = hf_hub_download(repo_id=MODEL_DIR, filename="quantized_model.pt")
 INSIGHTS_FILE = BASE_DIR / "data" / "processed" / "category_insights.json"
 ARTICLES_FILE = BASE_DIR / "data" / "processed" / "category_articles.json" # "category_articles_openai.json"
 
 #MODEL_DIR = "../models/distilbert-base-uncased"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
 model = torch.load(
-    "quantized_model.pt",
-    #map_location="cpu",
+    MODEL_PATH,
+    map_location="cpu",
     weights_only=False,   # this is a full quantized nn.Module, not just a state_dict
 ) # AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
 model.eval()
