@@ -26,7 +26,11 @@ ARTICLES_FILE = BASE_DIR / "data" / "processed" / "category_articles.json" # "ca
 
 #MODEL_DIR = "../models/distilbert-base-uncased"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
+model = torch.load(
+    os.path.join(MODEL_DIR, "quantized_model.pt"),
+    map_location="cpu",
+    weights_only=False,   # this is a full quantized nn.Module, not just a state_dict
+) # AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
 model.eval()
 
 with open(INSIGHTS_FILE) as f:
