@@ -1,3 +1,19 @@
-data/raw
-.env
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ML models
 models/distilbert-base-uncased
+
+# Data
+data/raw
+
+# Secrets
+.env
+
+# Node
+node_modules/
+dist/
+build/

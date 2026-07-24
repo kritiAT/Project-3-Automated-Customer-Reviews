@@ -20,7 +20,7 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-MODEL_DIR = BASE_DIR / "models" / "distilbert-base-uncased"
+MODEL_DIR = "KritiAmin/Automated-Reviews"
 INSIGHTS_FILE = BASE_DIR / "data" / "processed" / "category_insights.json"
 ARTICLES_FILE = BASE_DIR / "data" / "processed" / "category_articles_openai.json"
 
