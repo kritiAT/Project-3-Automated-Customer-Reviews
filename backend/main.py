@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 MODEL_DIR = "KritiAmin/Automated-Reviews"
 INSIGHTS_FILE = BASE_DIR / "data" / "processed" / "category_insights.json"
-ARTICLES_FILE = BASE_DIR / "data" / "processed" / "category_articles_openai.json"
+ARTICLES_FILE = BASE_DIR / "data" / "processed" / "category_articles.json" # "category_articles_openai.json"
 
 #MODEL_DIR = "../models/distilbert-base-uncased"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
