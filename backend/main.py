@@ -1,10 +1,12 @@
 from pathlib import Path
 import json, os
-import torch
+#import torch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from huggingface_hub import hf_hub_download
+from transformers import AutoTokenizer #, AutoModelForSequenceClassification
+#from huggingface_hub import hf_hub_download
+from optimum.onnxruntime import ORTModelForSequenceClassification
+import numpy as np
 
 
 app = FastAPI(
@@ -23,18 +25,22 @@ app.add_middleware(
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 MODEL_DIR = "KritiAmin/Automated-Reviews"
-MODEL_PATH = hf_hub_download(repo_id=MODEL_DIR, filename="quantized_model.pt")
+#MODEL_PATH = hf_hub_download(repo_id=MODEL_DIR, filename="quantized_model.pt")
 INSIGHTS_FILE = BASE_DIR / "data" / "processed" / "category_insights.json"
 ARTICLES_FILE = BASE_DIR / "data" / "processed" / "category_articles.json" # "category_articles_openai.json"
 
 #MODEL_DIR = "../models/distilbert-base-uncased"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-model = torch.load(
-    MODEL_PATH,
-    map_location="cpu",
-    weights_only=False,   # this is a full quantized nn.Module, not just a state_dict
-) # AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
-model.eval()
+tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR, subfolder="distilbert-onnx-quantized",)
+model = ORTModelForSequenceClassification.from_pretrained(
+    MODEL_DIR, subfolder="distilbert-onnx-quantized",
+    file_name="model_quantized.onnx",
+)
+# model = torch.load(
+#     MODEL_PATH,
+#     map_location="cpu",
+#     weights_only=False,   # this is a full quantized nn.Module, not just a state_dict
+# ) # AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
+# model.eval()
 
 with open(INSIGHTS_FILE) as f:
     insights = json.load(f)
@@ -70,9 +76,9 @@ def health_check():
 def sentiment(payload: dict):
     text = payload["text"]
     inputs = tokenizer(text, truncation=True, padding=True, max_length=128, return_tensors="pt")
-    with torch.no_grad():
-        logits = model(**inputs).logits
-    probs = torch.softmax(logits, dim=1)[0].tolist()
+    logits = model(**inputs).logits
+    logits = logits.detach().numpy() if hasattr(logits, "detach") else np.array(logits)
+    probs = (np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True))[0].tolist()
     id2label = model.config.id2label
     scores = {id2label[i]: p for i, p in enumerate(probs)}
     label = max(scores, key=scores.get)
