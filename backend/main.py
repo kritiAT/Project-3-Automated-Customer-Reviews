@@ -4,8 +4,9 @@ import json, os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from transformers import AutoTokenizer #, AutoModelForSequenceClassification
-#from huggingface_hub import hf_hub_download
-from optimum.onnxruntime import ORTModelForSequenceClassification
+from huggingface_hub import hf_hub_download
+#from optimum.onnxruntime import ORTModelForSequenceClassification
+import onnxruntime as ort
 import numpy as np
 
 
@@ -25,16 +26,17 @@ app.add_middleware(
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 MODEL_DIR = "KritiAmin/Automated-Reviews"
-#MODEL_PATH = hf_hub_download(repo_id=MODEL_DIR, filename="quantized_model.pt")
+MODEL_PATH = hf_hub_download(repo_id=MODEL_DIR, subfolder="distilbert-onnx-quantized", filename="model_quantized.onnx")
 INSIGHTS_FILE = BASE_DIR / "data" / "processed" / "category_insights.json"
 ARTICLES_FILE = BASE_DIR / "data" / "processed" / "category_articles.json" # "category_articles_openai.json"
 
 #MODEL_DIR = "../models/distilbert-base-uncased"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR, subfolder="distilbert-onnx-quantized",)
-model = ORTModelForSequenceClassification.from_pretrained(
-    MODEL_DIR, subfolder="distilbert-onnx-quantized",
-    file_name="model_quantized.onnx",
-)
+session = ort.InferenceSession(MODEL_PATH, providers=["CPUExecutionProvider"])
+# model = ORTModelForSequenceClassification.from_pretrained(
+#     MODEL_DIR, subfolder="distilbert-onnx-quantized",
+#     file_name="model_quantized.onnx",
+# )
 # model = torch.load(
 #     MODEL_PATH,
 #     map_location="cpu",
@@ -68,21 +70,34 @@ def health_check():
     """Check whether the API and sentiment model are available."""
     return {
         "status": "ok",
-        "sentiment_model_loaded": model is not None,
+        "sentiment_model_loaded": session is not None,
         "number_of_categories": len(insights),
     }
 
+# @app.post("/sentiment")
+# def sentiment(payload: dict):
+#     text = payload["text"]
+#     inputs = tokenizer(text, truncation=True, padding=True, max_length=128, return_tensors="pt")
+#     logits = model(**inputs).logits
+#     logits = logits.detach().numpy() if hasattr(logits, "detach") else np.array(logits)
+#     probs = (np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True))[0].tolist()
+#     id2label = model.config.id2label
+#     scores = {id2label[i]: p for i, p in enumerate(probs)}
+#     label = max(scores, key=scores.get)
+#     return {"label": label, "confidence": scores[label], "scores": scores}
+
 @app.post("/sentiment")
-def sentiment(payload: dict):
-    text = payload["text"]
-    inputs = tokenizer(text, truncation=True, padding=True, max_length=128, return_tensors="pt")
-    logits = model(**inputs).logits
-    logits = logits.detach().numpy() if hasattr(logits, "detach") else np.array(logits)
-    probs = (np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True))[0].tolist()
-    id2label = model.config.id2label
-    scores = {id2label[i]: p for i, p in enumerate(probs)}
-    label = max(scores, key=scores.get)
-    return {"label": label, "confidence": scores[label], "scores": scores}
+def sentiment(text: str):
+    inputs = tokenizer(text, truncation=True, padding=True, max_length=128, return_tensors="np")
+    onnx_inputs = {k: v for k, v in inputs.items() if k in [i.name for i in session.get_inputs()]}
+
+    logits = session.run(None, onnx_inputs)[0]
+    probs = np.exp(logits) / np.exp(logits).sum(axis=1, keepdims=True)
+    pred = int(np.argmax(probs, axis=1)[0])
+
+    id2label = {0: "negative", 1: "neutral", 2: "positive"}
+    scores = {id2label[i]: float(probs[0][i]) for i in range(len(id2label))}
+    return {"label": id2label[pred], "confidence": scores[id2label[pred]], "scores": scores}
 
 @app.get("/categories")
 def list_categories():
