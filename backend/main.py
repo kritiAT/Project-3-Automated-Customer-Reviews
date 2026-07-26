@@ -8,6 +8,7 @@ from huggingface_hub import hf_hub_download
 #from optimum.onnxruntime import ORTModelForSequenceClassification
 import onnxruntime as ort
 import numpy as np
+from pydantic import BaseModel
 
 
 app = FastAPI(
@@ -49,20 +50,20 @@ with open(INSIGHTS_FILE) as f:
 with open(ARTICLES_FILE) as f:
     articles = json.load(f)
 
-# @app.get("/")
-# def root():
-#     """Basic API information."""
-#     return {
-#         "message": "Automated Customer Reviews API",
-#         "version": "1.0.0",
-#         "docs": "/docs",
-#         "endpoints": [
-#             "GET /health",
-#             "POST /sentiment",
-#             "GET /categories",
-#             "GET /categories/{category_name}",
-#         ],
-#     }
+@app.get("/")
+def root():
+    """Basic API information."""
+    return {
+        "message": "Automated Customer Reviews API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "endpoints": [
+            "GET /health",
+            "POST /sentiment",
+            "GET /categories",
+            "GET /categories/{category_id}",
+        ],
+    }
 
 
 @app.get("/health")
@@ -86,8 +87,12 @@ def health_check():
 #     label = max(scores, key=scores.get)
 #     return {"label": label, "confidence": scores[label], "scores": scores}
 
+class SentimentRequest(BaseModel):
+    text: str
+
 @app.post("/sentiment")
-def sentiment(text: str):
+def sentiment(payload: SentimentRequest):
+    text = payload.text
     inputs = tokenizer(text, truncation=True, padding=True, max_length=128, return_tensors="np")
     onnx_inputs = {k: v for k, v in inputs.items() if k in [i.name for i in session.get_inputs()]}
 
