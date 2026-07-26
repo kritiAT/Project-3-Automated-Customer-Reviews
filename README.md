@@ -1,8 +1,11 @@
 # Field Notes — Amazon Review Intelligence Platform
 
-Turns raw Amazon product reviews into two things stakeholders can actually
-use: an on-demand sentiment classifier, and generated blog-style category
-reports backed by real statistics. Built in four stages, and integrated together into one deployed web app.
+Transforms raw Amazon product reviews into actionable insights through two key capabilities: an on-demand sentiment classifier and AI-generated, blog-style category reports backed by real review statistics.
+
+The project was developed in four stages, with each component integrated into a single, fully deployed web application.
+
+**🔗 Live app:** [Field Notes](https://field-notes-nine-rho.vercel.app)
+*(first load may take ~30-60s while the backend wakes up from idle)*
 
 
 
@@ -36,8 +39,8 @@ The quantized DistilBERT model is hosted separately on the Hugging Face Hub rath
 
 - Model: `distilbert-base-uncased`, fine-tuned for 3-class sentiment derived from star ratings
 - Class imbalance handled with **undersampling** and **class-weighted loss** 
-- **Dynamically quantized** post-training (int8 `Linear` layers) to shrink
-  the model for deployment
+- Quantized model post-training using **ONNX Runtime** (`optimum[onnxruntime]`) to int8
+- Accuracy and F1-Score were re-validated on the held-out test set after quantization to confirm no meaningful drop from the fp32 model
 
 
 ## 2. Product Category Clustering
@@ -55,11 +58,11 @@ stats → generated article**, run via `organize_data_insights.ipynb`
 
 ## 4. Web App
 
-- **Backend** (`backend/main.py`, FastAPI): get category insights and predict review sentiment;
-  exposes `POST /api/sentiment`, `GET /api/categories`, `GET /api/categories/{id}`
-- **Frontend** (`frontend/`, React + Vite): lets users classify a review
-  in real time, and browse the 5 category reports with stats and charts
-
+- **Backend** (`backend/main.py`, FastAPI): loads the quantized DistilBERT sentiment model (ONNX, served via `onnxruntime` — no `torch` at runtime) from the Hugging Face Hub
+- **Frontend** (`frontend/`, React + Vite): lets users classify a review in real time, and browse the 6 category reports with stats and charts
+- **Live deployment:**
+  - Frontend: [Field Notes](https://field-notes-nine-rho.vercel.app/)
+  - Backend: [Render backend](https://project-3-automated-customer-reviews.onrender.com) (interactive API docs at `/docs`, health check at `/health`)
 
 ## Running the whole thing locally
 
@@ -69,7 +72,7 @@ pip install -r requirements.txt
 uvicorn backend.main:app --reload --port 8000
 
 # 2. Frontend (separate terminal)
-cd webapp
+cd frontend
 npm install
 cp .env.example .env.local     # VITE_API_BASE_URL=http://localhost:8000
 npm run dev
@@ -79,12 +82,10 @@ both work end to end.
 
 ## Deployment summary
 
-- **Frontend** → Vercel (static Vite build), `VITE_API_BASE_URL` set as an
-  environment variable pointing at the deployed backend
-- **Backend** → Render (needs a persistent process to hold the
-  loaded model in memory; not a fit for serverless cold-starts)
-- **OpenAI key** → backend environment variable only, never exposed to the
-  frontend — see `frontend/README.md` Section 7 for the full checklist
+- **Frontend** → Vercel (static Vite build); `VITE_API_BASE_URL` set as a *Production* environment variable pointing at the deployed backend
+- **Backend** → Render; Model is ONNX-quantized and served via `onnxruntime` only to stay under Render's memory limit
+- **Model storage** → Quantized ONNX model and tokenizer are hosted on the Hugging Face Hub ([Final model](KritiAmin/Automated-Reviews/distilbert-onnx-quantized)) and downloaded at backend startup
+
 
 ## Possible next steps
 
